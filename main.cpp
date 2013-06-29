@@ -12,8 +12,14 @@
 
 using namespace std;
 using namespace cv;
+using namespace LibSerial;
 
+SerialStream serial_port ;
+char str[1];
+char serial_command[2];
 Point clickpoint(1,1);
+Mat head(480 , 640, CV_8UC1, 255); Mat tail(480 , 640, CV_8UC1, 255);
+
 
 void getCentroid(Mat &thresholded_image, Point &Centroid, int &Area)
 {
@@ -101,7 +107,7 @@ class imageCell
     void fillCell(int color);
 
     private:
-    Mat img; Mat head; Mat tail;
+    Mat img;
     int cell_length;
     int rows, cols;
     Point gridPoint;
@@ -115,8 +121,6 @@ class imageCell
 imageCell::imageCell(Mat &image)
 {
     img = image;
-    cvtColor(img, head, CV_RGB2GRAY);
-    cvtColor(img, tail, CV_RGB2GRAY);
     cell_length = 20;
     rows = (img.rows)/cell_length; cols = (img.cols)/cell_length;
     gridPoint = Point(1,1);
@@ -253,19 +257,41 @@ void imageCell::getPosandOrientation()
     robot.currentPose = Point3d(robot.frontMarker.x, robot.frontMarker.y, orientation);
 }
 
+void SerialSend(char c)
+{
+    serial_command[0] = c;
+
+    serial_port.SetBaudRate(SerialStreamBuf::BAUD_9600);
+    serial_port.SetCharSize(SerialStreamBuf::CHAR_SIZE_8);
+    serial_port.SetParity(SerialStreamBuf::PARITY_NONE);
+    serial_port.SetFlowControl(SerialStreamBuf::FLOW_CONTROL_NONE);
+    serial_port.write(serial_command, 1);
+
+}
+
+
 int main(int argc, char** argv)
 {
     ///Variables
     char keypress; int camera_number = 0;
+    char response;
     Mat tempp(900, 1600, CV_8UC3, Scalar(0));
     Mat camera_frame; Mat thresh_frame;
-    ///Read image
     Mat maze = imread("Path_bin.jpg");
+    ///Read image
+
     //cvtColor(tempp, maze, CV_RGB2GRAY);
     if(maze.empty()) return -1;
     cvtColor(maze, maze, CV_RGB2GRAY);
     threshold(maze, maze, 250, 255, CV_THRESH_BINARY_INV);
     medianBlur(maze, maze, 5);
+
+    ///Serial setup
+    serial_port.Open("/dev/ttyACM0");
+
+    if(!serial_port.IsOpen()) cout<<"ERROR";
+
+
 
     VideoCapture camera;
     camera.open(camera_number);
@@ -285,28 +311,32 @@ int main(int argc, char** argv)
     cells.fillCell(255);
     namedWindow("maze");
     setMouseCallback("maze", mouseEvent, &cells);
+
     int i,j;
-    camera >> camera_frame;
-    camera_frame.copyTo(thresh_frame);
-    cvtColor(thresh_frame, thresh_frame, CV_RGB2GRAY);
     while(true)
     {
         camera >> camera_frame;
+        //serial_port.read(str,1);
+        //printf("\nChar: %s", str);
         if(camera_frame.empty())
         {
             cerr<<"ERROR: COULD NOT GRAB A FRAME!"<<endl;
             exit(1);
         }
-        HSV_threshold(camera_frame, thresh_frame, 122, 79, 98, 9, 208, 163);
-        Point3d point = findCenterAndOrientation(thresh_frame);
-        cout<<"\nThe angle is :"<<point.z;
-        //imshow("maze", maze);
+        cvtColor(camera_frame, thresh_frame, CV_RGB2GRAY);
+        imshow("maze", maze);
         imshow("video", thresh_frame);
         keypress = waitKey(30);
-
+        if(keypress=='w' || keypress=='W') SerialSend('W');
+        if(keypress=='a' || keypress=='A') SerialSend('A');
+        if(keypress=='s' || keypress=='S') SerialSend('S');
+        if(keypress=='d' || keypress=='D') SerialSend('D');
+        //cout<<"\nThe received char is: "<<response<<"\n";
         if(keypress==27) break;
+
     }
 
-
+    serial_port.Close();
     return 0;
 }
+
