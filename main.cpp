@@ -99,9 +99,9 @@ class imageCell
     int getCellArea();
 
     ///Robot functions
-    void getPosandOrientation();
+    void getRobotPosandOrientation();
 
-    char getMotion(Point robotPos);
+    char getMotion(Point3d robotPos);
 
     ///Fill a cell with white
     void fillCell(int color);
@@ -120,6 +120,7 @@ class imageCell
 
 imageCell::imageCell(Mat &image)
 {
+    ///Constructor. Setting up variables.
     img = image;
     cell_length = 20;
     rows = (img.rows)/cell_length; cols = (img.cols)/cell_length;
@@ -135,12 +136,15 @@ void imageCell::setImage(Mat &image)
 
 Point imageCell::pixToGrid(int pix_row, int pix_col)
 {
+    ///Convert from pixel coordinates to
+    ///grid coordinates.
     Point pt((int)(pix_col/cell_length)+1,(int)(pix_row/cell_length)+1);
     return pt;
 }
 
 void imageCell::setGridLoc(int row, int col)
 {
+    ///Set the grid location
     gridPoint.x  = col;
     gridPoint.y  = row;
     cell_start.y = (gridPoint.y - 1)*cell_length;
@@ -151,6 +155,7 @@ void imageCell::setGridLoc(int row, int col)
 
 void imageCell::setGridLoc(Point gridLoc)
 {
+    ///Overloaded
     gridPoint = gridLoc;
     cell_start.y = (gridPoint.y - 1)*cell_length;
     cell_start.x = (gridPoint.x - 1)*cell_length;
@@ -160,6 +165,7 @@ void imageCell::setGridLoc(Point gridLoc)
 
 int imageCell::getCellArea()
 {
+    ///Get the area of the cell.
     int Area = 0; int i=0; int j=0;
     for(i=cell_start.y+1; i<cell_end.y; i++)
     {
@@ -173,18 +179,24 @@ int imageCell::getCellArea()
 
 bool imageCell::isCellPath()
 {
+    ///Determine if cell is part of the path.
     if(getCellArea() > (20*20*0.5))
     return true;
     else return false;
 }
 
-char imageCell::getMotion(Point robotPos)
+char imageCell::getMotion(Point3d robotPos)
 {
+    ///Check the surrounding cells and return
+    ///correct motion - (W, A, S or D)
+    ///The robot position is in pixel coordinates
+    ///remember to convert it to grid coordinates.
 
 }
 
 void imageCell::fillCell(int color)
 {
+    ///Fill the cell with a grayscale value.
     int i=0; int j=0;
     for(i=cell_start.y+1; i<cell_end.y; i++)
     {
@@ -198,6 +210,7 @@ void imageCell::fillCell(int color)
 
 void mouseEvent(int event, int x, int y, int flags, void *param)
 {
+    ///Callback function for mouseevents.
     imageCell *cellptr = (imageCell*) param;
 
     if(event == EVENT_LBUTTONDOWN )
@@ -231,7 +244,7 @@ void HSV_threshold(Mat &image, Mat &output_image_gray, int H_upper, int H_lower,
 
     ///Converting input image to HSV
     cvtColor(image, HSV, CV_RGB2HSV);
-    //cvtColor(output_image_gray, output_image_gray, CV_RGB2GRAY);
+    cvtColor(output_image_gray, output_image_gray, CV_RGB2GRAY);
 
     ///Processing each pixel and thresholding the image.
     int i, j;
@@ -245,7 +258,7 @@ void HSV_threshold(Mat &image, Mat &output_image_gray, int H_upper, int H_lower,
         }
 }
 
-void imageCell::getPosandOrientation()
+void imageCell::getRobotPosandOrientation()
 {
     Point orientationVector; double orientation;
     HSV_threshold(img, head, 255,0, 255,0, 255,0);
@@ -254,7 +267,7 @@ void imageCell::getPosandOrientation()
     getCentroid(tail, robot.rearMarker, robot.rearMarkerArea);
     orientationVector = robot.frontMarker - robot.rearMarker;
     orientation = atan2(orientationVector.y, orientationVector.x);
-    robot.currentPose = Point3d(robot.frontMarker.x, robot.frontMarker.y, orientation);
+    robot.currentPose = Point3d((robot.frontMarker.x), (robot.frontMarker.y), orientation);
 }
 
 void SerialSend(char c)
