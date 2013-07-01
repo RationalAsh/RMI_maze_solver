@@ -229,7 +229,7 @@ void imageCell::fillCell(int color)
         }
     }
     imgState[gridPoint.y][gridPoint.x] = color;
-    cout<<"\nThe state of 1,1 is: "<<imgState[gridPoint.y][gridPoint.x];
+    //cout<<"\nThe state of 1,1 is: "<<imgState[gridPoint.y][gridPoint.x];
 }
 
 
@@ -348,10 +348,10 @@ int main(int argc, char** argv)
     cells.setGridLoc(1,1);
     cells.fillCell(255);
     namedWindow("maze");
-    setMouseCallback("maze", mouseEvent, &cells);
+    namedWindow("video");
     camera >> camera_frame;
     imageCell Vid(camera_frame);
-
+    setMouseCallback("video", mouseEvent, &Vid);
     while(true)
     {
         camera >> camera_frame;
