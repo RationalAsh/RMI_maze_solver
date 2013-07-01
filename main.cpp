@@ -19,6 +19,7 @@ char str[1];
 char serial_command[2];
 Point clickpoint(1,1);
 Mat head(480 , 640, CV_8UC1, 255); Mat tail(480 , 640, CV_8UC1, 255);
+int j, k;
 
 
 void getCentroid(Mat &thresholded_image, Point &Centroid, int &Area)
@@ -107,6 +108,7 @@ class imageCell
     void fillCell(int color);
 
     private:
+    int **imgState;
     Mat img;
     int cell_length;
     int rows, cols;
@@ -124,6 +126,12 @@ imageCell::imageCell(Mat &image)
     img = image;
     cell_length = 20;
     rows = (img.rows)/cell_length; cols = (img.cols)/cell_length;
+    imgState = new int*[rows+1];
+    for(k=0;k<rows+1;k++) imgState[k] = new int[cols+1];
+    for(j=1;j<=rows;j++)
+    {
+        for(k=1;k<=cols;k++) imgState[j][k] = -1;
+    }
     gridPoint = Point(1,1);
     cout<<"\nThe size of the image is: "<<img.rows<<"x"<<img.cols<<"\n";
     botPos = Point(5,21);
@@ -132,6 +140,18 @@ imageCell::imageCell(Mat &image)
 void imageCell::setImage(Mat &image)
 {
     img = image;
+    for(j=1;j<=rows;j++)
+    {
+        for(k=1;k<=cols;k++)
+        {
+            if(imgState[j][k] != -1)
+            {
+                setGridLoc(j,k);
+                fillCell(imgState[j][k]);
+            }
+
+        }
+    }
 }
 
 Point imageCell::pixToGrid(int pix_row, int pix_col)
@@ -174,6 +194,7 @@ int imageCell::getCellArea()
             Area = Area + (img.at<uchar>(i,j))/255;
         }
     }
+
     return (Area);
 }
 
@@ -191,6 +212,8 @@ char imageCell::getMotion(Point3d robotPos)
     ///correct motion - (W, A, S or D)
     ///The robot position is in pixel coordinates
     ///remember to convert it to grid coordinates.
+    Point robotGridPos = pixToGrid(robotPos.y, robotPos.x);
+
 
 }
 
@@ -205,6 +228,8 @@ void imageCell::fillCell(int color)
             img.at<uchar>(i,j) = color;
         }
     }
+    imgState[gridPoint.y][gridPoint.x] = color;
+    cout<<"\nThe state of 1,1 is: "<<imgState[gridPoint.y][gridPoint.x];
 }
 
 
@@ -324,8 +349,9 @@ int main(int argc, char** argv)
     cells.fillCell(255);
     namedWindow("maze");
     setMouseCallback("maze", mouseEvent, &cells);
+    camera >> camera_frame;
+    imageCell Vid(camera_frame);
 
-    int i,j;
     while(true)
     {
         camera >> camera_frame;
@@ -338,8 +364,13 @@ int main(int argc, char** argv)
         }
         cvtColor(camera_frame, thresh_frame, CV_RGB2GRAY);
         imshow("maze", maze);
+        Vid.setImage(thresh_frame);
+        Vid.setGridLoc(1,1);
+        Vid.fillCell(255);
+
         imshow("video", thresh_frame);
         keypress = waitKey(30);
+        ///Keyhandlers for teleop mode.
         if(keypress=='w' || keypress=='W') SerialSend('W');
         if(keypress=='a' || keypress=='A') SerialSend('A');
         if(keypress=='s' || keypress=='S') SerialSend('S');
