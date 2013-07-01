@@ -21,7 +21,7 @@ Point clickpoint(1,1);
 Mat head(480 , 640, CV_8UC1, 255); Mat tail(480 , 640, CV_8UC1, 255);
 int j, k;
 
-
+///Function that calculates the centroid of a binary image.
 void getCentroid(Mat &thresholded_image, Point &Centroid, int &Area)
 {
     ///The object that holds all the centroids.
@@ -38,7 +38,8 @@ void getCentroid(Mat &thresholded_image, Point &Centroid, int &Area)
     Area        = int(M00);
 }
 
-
+///This function isn't really being used.
+///It's just there for reference.
 Point3d findCenterAndOrientation(const Mat& src)
 {
     Moments m = cv::moments(src, true);
@@ -54,6 +55,8 @@ Point3d findCenterAndOrientation(const Mat& src)
     return Point3d(cen_x, cen_y, theta);
 }
 
+///A robot class to hold all the data related to the
+///robot like position and orientation
 class Robot
 {
     public:
@@ -68,6 +71,9 @@ class Robot
     Robot();
 };
 
+///The constructor for the robot class
+///The variable state contains the position and the
+///Orientation of the robot.
 Robot::Robot(Point3d state)
 {
     currentPose = state;
@@ -75,6 +81,8 @@ Robot::Robot(Point3d state)
     rearMarker  = Point(0,0);
 }
 
+///Overloaded constructor to declare a robot object without any
+///arguments
 Robot::Robot()
 {
     currentPose = Point3d(0,0,0);
@@ -82,6 +90,11 @@ Robot::Robot()
     rearMarker  = Point(0,0);
 }
 
+///This is the image processing class. It contains all the
+///functions and algorithms to divide an image into cells and
+///perform operations on these cells rather than directly on pixels.
+///The cell length is set as 20. That means that each cell will be
+///20 pixels wide.
 class imageCell
 {
     public:
@@ -108,38 +121,62 @@ class imageCell
     void fillCell(int color);
 
     private:
+    ///A dynamic array that stores the current state of the image
     int **imgState;
+    ///An internal copy of the images to be divided into cells
     Mat img;
+    ///The dimensions of the cell
     int cell_length;
+    ///The number of rows and columns in the grid
     int rows, cols;
+    ///The point in the grid that is being operated on
     Point gridPoint;
+    ///variable that holds the begginning pixel value of the current cell
     Point cell_start;
+    ///Variable that holds the end pixel value fo the current cell
     Point cell_end;
+    ///Position of the bot?
     Point botPos;
+    ///A robot object to hold information about the robot.
     Robot robot;
 
 };
 
+///Constructor for the class. It takes a pointer to a Mat as
+///the argument. The constructor sets up internal variables.
 imageCell::imageCell(Mat &image)
 {
     ///Constructor. Setting up variables.
+    ///A copy of the image
     img = image;
+    ///Dimensions of the cell
     cell_length = 20;
+    ///The number of rows and columns in the grid.
     rows = (img.rows)/cell_length; cols = (img.cols)/cell_length;
+    ///assigning memory space to the array dynamically
     imgState = new int*[rows+1];
     for(k=0;k<rows+1;k++) imgState[k] = new int[cols+1];
+
+    ///Filling the array with -1
     for(j=1;j<=rows;j++)
     {
         for(k=1;k<=cols;k++) imgState[j][k] = -1;
     }
+
+    ///Initializing the gridpoint with value 1,1
     gridPoint = Point(1,1);
+    ///For debugging
     cout<<"\nThe size of the image is: "<<img.rows<<"x"<<img.cols<<"\n";
     botPos = Point(5,21);
 }
 
+///Sets the image being operated on by the class.
 void imageCell::setImage(Mat &image)
 {
     img = image;
+    ///Checking the array for the state
+    ///This is important. Otherwise, the changes made to the
+    ///cell won't stay permanent across the frames in a video.
     for(j=1;j<=rows;j++)
     {
         for(k=1;k<=cols;k++)
@@ -162,6 +199,7 @@ Point imageCell::pixToGrid(int pix_row, int pix_col)
     return pt;
 }
 
+///Set the current point in the grid being operated on.
 void imageCell::setGridLoc(int row, int col)
 {
     ///Set the grid location
@@ -173,6 +211,9 @@ void imageCell::setGridLoc(int row, int col)
     cell_end.x   = (gridPoint.x)*cell_length;
 }
 
+///Overloaded function which accepts a Point type.
+///This is a datatypy defined in opencv because it
+///convenient for a lot of image processing tasks.
 void imageCell::setGridLoc(Point gridLoc)
 {
     ///Overloaded
@@ -183,6 +224,8 @@ void imageCell::setGridLoc(Point gridLoc)
     cell_end.x   = (gridPoint.x)*cell_length;
 }
 
+///Get the area of the cell. Since the image is intended to be
+///Binary, this gives the number of white pixels.
 int imageCell::getCellArea()
 {
     ///Get the area of the cell.
@@ -198,6 +241,7 @@ int imageCell::getCellArea()
     return (Area);
 }
 
+///This function is under construction check back later.
 bool imageCell::isCellPath()
 {
     ///Determine if cell is part of the path.
@@ -206,6 +250,7 @@ bool imageCell::isCellPath()
     else return false;
 }
 
+///This function is under construction. Check back later.
 char imageCell::getMotion(Point3d robotPos)
 {
     ///Check the surrounding cells and return
@@ -217,9 +262,9 @@ char imageCell::getMotion(Point3d robotPos)
 
 }
 
+///Fill the cell with a grayscale value.
 void imageCell::fillCell(int color)
 {
-    ///Fill the cell with a grayscale value.
     int i=0; int j=0;
     for(i=cell_start.y+1; i<cell_end.y; i++)
     {
@@ -232,12 +277,14 @@ void imageCell::fillCell(int color)
     //cout<<"\nThe state of 1,1 is: "<<imgState[gridPoint.y][gridPoint.x];
 }
 
-
+///Callback function for mouseevents. This function is called
+///whenever a mouse event is detected within a window with a
+///mouse callback set.
 void mouseEvent(int event, int x, int y, int flags, void *param)
 {
-    ///Callback function for mouseevents.
     imageCell *cellptr = (imageCell*) param;
 
+    ///If the left mouse button is pressed make the cell white
     if(event == EVENT_LBUTTONDOWN )
     {
         clickpoint.x = x;
@@ -247,6 +294,7 @@ void mouseEvent(int event, int x, int y, int flags, void *param)
         cout<<"\nX: "<<x<<" Y: "<<y;
     }
 
+    ///If the right mouse button is pressed make the cell black.
     if(event == EVENT_RBUTTONDOWN)
     {
         cellptr->setGridLoc(cellptr->pixToGrid(y,x));
@@ -254,6 +302,7 @@ void mouseEvent(int event, int x, int y, int flags, void *param)
         printf("\nThe cell Area is: %d", cellptr->getCellArea());
     }
 
+    ///If the middle button is pressed, print the cell area.
     if(event == EVENT_MBUTTONDBLCLK)
     {
         cellptr->setGridLoc(cellptr->pixToGrid(y,x));
@@ -262,6 +311,10 @@ void mouseEvent(int event, int x, int y, int flags, void *param)
 
 }
 
+///This function accepts an colour image and applies thresholding to it
+///using given HSV values. It then writes a binary image (which is the
+///result of the thresholding operation) to the Mat pointed to
+///by output_image_gray
 void HSV_threshold(Mat &image, Mat &output_image_gray, int H_upper, int H_lower, int S_upper, int S_lower, int V_upper, int V_lower)
 {
     Mat HSV;///Temporary Mat to store HSV
@@ -283,6 +336,9 @@ void HSV_threshold(Mat &image, Mat &output_image_gray, int H_upper, int H_lower,
         }
 }
 
+///Function to get the robot position and orientation
+///The HSV values need to be set to the colours of the
+///two markers on the robot.
 void imageCell::getRobotPosandOrientation()
 {
     Point orientationVector; double orientation;
@@ -295,6 +351,9 @@ void imageCell::getRobotPosandOrientation()
     robot.currentPose = Point3d((robot.frontMarker.x), (robot.frontMarker.y), orientation);
 }
 
+///This function sends a character over a serial connection to the
+///Arduino which controls the RC module. The characer tells the robot
+///how to move.
 void SerialSend(char c)
 {
     serial_command[0] = c;
@@ -315,9 +374,8 @@ int main(int argc, char** argv)
     char response;
     Mat tempp(900, 1600, CV_8UC3, Scalar(0));
     Mat camera_frame; Mat thresh_frame;
+    ///Read image. This is for debugging
     Mat maze = imread("Path_bin.jpg");
-    ///Read image
-
     //cvtColor(tempp, maze, CV_RGB2GRAY);
     if(maze.empty()) return -1;
     cvtColor(maze, maze, CV_RGB2GRAY);
@@ -330,7 +388,7 @@ int main(int argc, char** argv)
     if(!serial_port.IsOpen()) cout<<"ERROR";
 
 
-
+    ///Video capture object
     VideoCapture camera;
     camera.open(camera_number);
     if(! camera.isOpened())
@@ -339,11 +397,14 @@ int main(int argc, char** argv)
         exit(1);
     }
 
+    ///Setting the resolution of the webcam
+    ///This needs to be higher during the actual event
     camera.set(CV_CAP_PROP_FRAME_WIDTH, 640);
     camera.set(CV_CAP_PROP_FRAME_HEIGHT, 480);
 
 
-    ///Img processing class
+    ///Img processing class declaration
+    ///Intitialized with the maze image. For debugging.
     imageCell cells(maze);
     cells.setGridLoc(1,1);
     cells.fillCell(255);
@@ -351,9 +412,14 @@ int main(int argc, char** argv)
     namedWindow("video");
     camera >> camera_frame;
     imageCell Vid(camera_frame);
+
+    ///Setting the mouse callback function
     setMouseCallback("video", mouseEvent, &Vid);
+
+    ///Main loop of the program
     while(true)
     {
+        ///Get the next frame from the camera
         camera >> camera_frame;
         //serial_port.read(str,1);
         //printf("\nChar: %s", str);
@@ -362,24 +428,37 @@ int main(int argc, char** argv)
             cerr<<"ERROR: COULD NOT GRAB A FRAME!"<<endl;
             exit(1);
         }
+
+        ///Convert the image from the webcam to grayscale.
         cvtColor(camera_frame, thresh_frame, CV_RGB2GRAY);
+        ///Show the maze
         imshow("maze", maze);
+
+        ///Sets the first cell in the video to white.
+        ///I put this here to test if the image processing class was
+        ///working with the video feed.
         Vid.setImage(thresh_frame);
         Vid.setGridLoc(1,1);
         Vid.fillCell(255);
 
+        ///Show the video
         imshow("video", thresh_frame);
         keypress = waitKey(30);
-        ///Keyhandlers for teleop mode.
+
+        ///Keyhandlers for teleop mode. This is for controlling the robot
+        ///Using the W A S D keys on the keyboard. This allows me to control
+        ///the robot like a race car in NFS. :)
         if(keypress=='w' || keypress=='W') SerialSend('W');
         if(keypress=='a' || keypress=='A') SerialSend('A');
         if(keypress=='s' || keypress=='S') SerialSend('S');
         if(keypress=='d' || keypress=='D') SerialSend('D');
         //cout<<"\nThe received char is: "<<response<<"\n";
+        ///Exit the main loop when esc is pressed.
         if(keypress==27) break;
 
     }
 
+    ///Close the serial port.
     serial_port.Close();
     return 0;
 }
